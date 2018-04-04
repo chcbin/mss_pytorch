@@ -11,7 +11,6 @@ from helpers import visualize, nnet_helpers
 from torch.autograd import Variable
 from modules import cls_sparse_skip_filt as s_s_net
 from losses import loss_functions
-from helpers import iterative_inference as it_infer
 
 
 def main(training, apply_sparsity):
@@ -96,9 +95,7 @@ def main(training, apply_sparsity):
                 for batch in tqdm(range(ms.shape[0]/B)):
                     # Mixture to Singing voice
                     H_enc = encoder(ms[batch * B: (batch+1)*B, :, :])
-                    # Iterative inference
-                    H_j_dec = it_infer.iterative_recurrent_inference(decoder, H_enc,
-                                                                     criterion=None, tol=1e-3, max_iter=10)
+                    H_j_dec = decoder(H_enc)
                     vs_hat_b = sp_decoder(H_j_dec, ms[batch * B: (batch+1)*B, :, :])[0]
                     vs_hat_b_filt = source_enhancement(vs_hat_b)
 
