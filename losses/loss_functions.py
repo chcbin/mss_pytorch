@@ -15,4 +15,14 @@ def kullback_leibler(x, x_hat):
 def mse(x, x_hat):
     return torch.mean(torch.pow(x - x_hat, 2.))
 
+
+def mt_l1_based(x, x_hat, masking_treshold):
+    err = torch.abs(x - x_hat) * masking_treshold
+    return torch.mean(err)
+
+
+def mt_l2_based(x, x_hat, masking_treshold):
+    err = torch.pow(x - x_hat, 2.) * masking_treshold
+    return torch.mean(err)
+
 # EOF
