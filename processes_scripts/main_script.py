@@ -40,11 +40,10 @@ def main(training, apply_sparsity):
     epochs = 100                # Epochs
     init_lr = 1e-4              # Initial learning rate
     mnorm = 0.5	                # L2-based norm clipping
-    mask_loss_threshold = 1.5   # Scalar indicating the threshold for the time-frequency masking module
-    good_loss_threshold = 0.25  # Scalar indicating the threshold for the source enhancment module
+    lambda_h_j_dec = 2e-7       # Scalar for H_j_dec sparsity term
 
-    # Data (Predifined by the DSD100 dataset and the non-instumental/non-bleeding stems of MedleydB)
-    totTrainFiles = 116
+    # Data (MUSDB18)
+    totTrainFiles = 100
     numFilesPerTr = 4
 
     print('------------   Building model   ------------')
@@ -111,8 +110,7 @@ def main(training, apply_sparsity):
                         loss_mask = rec_criterion(Variable(torch.from_numpy(vs[batch * B: (batch+1)*B, L:-L, :]).cuda()),
                                          vs_hat_b)
 
-                        if loss_mask.data[0] >= mask_loss_threshold and loss.data[0] >= good_loss_threshold:
-                            loss += loss_mask
+                        loss += loss_mask
 
                     else:
                         loss = rec_criterion(Variable(torch.from_numpy(vs[batch * B: (batch+1)*B, L:-L, :])),
@@ -121,8 +119,7 @@ def main(training, apply_sparsity):
                         loss_mask = rec_criterion(Variable(torch.from_numpy(vs[batch * B: (batch+1)*B, L:-L, :])),
                                          vs_hat_b)
 
-                        if loss_mask.data[0] >= mask_loss_threshold and loss.data[0] >= good_loss_threshold:
-                            loss += loss_mask
+                        loss += loss_mask
 
                     # Store loss for display and scheduler
                     batch_loss += [loss.data[0]]
@@ -131,13 +128,14 @@ def main(training, apply_sparsity):
                     # Sparsity term
                     if apply_sparsity:
                         sparsity_penalty = torch.sum(torch.abs(torch.diag(sp_decoder.ffDec.weight.data))) * 1e-2 +\
-                                           torch.sum(torch.pow(source_enhancement.ffSe_dec.weight, 2.)) * 1e-4
+                                           torch.sum(torch.pow(source_enhancement.ffSe_dec.weight, 2.)) * 1e-4 + \
+                                           H_j_dec.norm(1.) * lambda_h_j_dec
 
                         loss += sparsity_penalty
 
                         winb_viz = visualize.viz.line(X=np.arange(batch_index, batch_index+1),
-                             Y=np.reshape(sparsity_penalty.data[0], (1,)),
-                             win=winb_viz, update='append')
+                                                      Y=np.reshape(sparsity_penalty.data[0], (1,)),
+                                                      win=winb_viz, update='append')
 
                     optimizer.zero_grad()
 
@@ -154,7 +152,7 @@ def main(training, apply_sparsity):
                                                  win=win_viz, update='append')
                     batch_index += 1
 
-            if (epoch+1) % 40 == 0:
+            if (epoch+1) % 50 == 0:
                 print('------------   Saving model   ------------')
                 torch.save(encoder.state_dict(), 'results/torch_sps_encoder_' + str(epoch+1)+'.pytorch')
                 torch.save(decoder.state_dict(), 'results/torch_sps_decoder_' + str(epoch+1)+'.pytorch')
@@ -174,7 +172,7 @@ def main(training, apply_sparsity):
 
 
 if __name__ == '__main__':
-    training = False         # Whether to train or test the trained model (requires the optimized parameters)
+    training = True          # Whether to train or test the trained model (requires the optimized parameters)
     apply_sparsity = True    # Whether to apply a sparse penalty or not
 
     sfiltnet = main(training, apply_sparsity)
@@ -182,8 +180,8 @@ if __name__ == '__main__':
     #print('-------------     BSS-Eval     -------------')
     #nnet_helpers.test_eval(sfiltnet, 16, 60, 4096, 10, 2049, 384)
     #print('-------------       Done       -------------')
-    print('-------------     DNN-Test     -------------')
-    nnet_helpers.test_nnet(sfiltnet, 60, 10*2, 2049, 4096, 384, 16)
-    print('-------------       Done       -------------')
+    #print('-------------     DNN-Test     -------------')
+    #nnet_helpers.test_nnet(sfiltnet, 60, 10*2, 2049, 4096, 384, 16)
+    #print('-------------       Done       -------------')
 
 # EOF
