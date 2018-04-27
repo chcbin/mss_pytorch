@@ -158,11 +158,11 @@ def main(training, apply_sparsity):
                 print('------------       Done       ------------')
     else:
         print('-------  Loading pre-trained model   -------')
-        print('-------  Loading inference weights  -------')
-        encoder.load_state_dict(torch.load('results/results_inference/torch_sps_encoder.pytorch'))
-        decoder.load_state_dict(torch.load('results/results_inference/torch_sps_decoder.pytorch'))
-        sp_decoder.load_state_dict(torch.load('results/results_inference/torch_sps_sp_decoder.pytorch'))
-        source_enhancement.load_state_dict(torch.load('results/results_inference/torch_sps_se.pytorch'))
+        print('-------  Loading weights  -------')
+        encoder.load_state_dict(torch.load('results/torch_sps_encoder.pytorch'))
+        decoder.load_state_dict(torch.load('results/torch_sps_decoder.pytorch'))
+        sp_decoder.load_state_dict(torch.load('results/torch_sps_sp_decoder.pytorch'))
+        source_enhancement.load_state_dict(torch.load('results/torch_sps_se.pytorch'))
         print('-------------      Done        -------------')
 
     return encoder, decoder, sp_decoder, source_enhancement
@@ -173,12 +173,5 @@ if __name__ == '__main__':
     apply_sparsity = True    # Whether to apply a sparse penalty or not
 
     sfiltnet = main(training, apply_sparsity)
-
-    #print('-------------     BSS-Eval     -------------')
-    #nnet_helpers.test_eval(sfiltnet, 16, 60, 4096, 10, 2049, 384)
-    #print('-------------       Done       -------------')
-    #print('-------------     DNN-Test     -------------')
-    #nnet_helpers.test_nnet(sfiltnet, 60, 10*2, 2049, 4096, 384, 16)
-    #print('-------------       Done       -------------')
 
 # EOF
