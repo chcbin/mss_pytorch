@@ -6,6 +6,7 @@ __copyright__ = 'MacSeNet'
 from helpers.io_methods import AudioIO as Io
 from numpy.lib import stride_tricks
 from helpers import tf_methods as tf
+import psychoacoustic_model as pm
 import numpy as np
 import os
 
@@ -15,10 +16,15 @@ test_dataset_path = '/Datasets/musdb18/'
 keywords = ['bass.wav', 'drums.wav', 'other.wav', 'vocals.wav', 'mixture.wav']
 foldersList = ['train', 'test']
 save_path = 'results/'
+mt_path = 'path/to_stored/inverse_masking_threshold_batches/'
+pm = pm.PsychoacousticModel(N=4096, fs=44100, nfilts=24)
+mm = pm.MOEar()
+mm = 10**(mm/20.)
 
 __all__ = [
     'prepare_overlap_sequences',
-    'get_data'
+    'get_data',
+    'get_data_for_pm'
 ]
 
 
@@ -131,5 +137,80 @@ def get_data(current_set, set_size, wsz=2049, N=4096, hop=384, T=100, L=20, B=16
 
     return ms_train, vs_train
 
+
+def get_data_for_pm(current_set, set_size, wsz=2049, N=4096, hop=384, T=100, L=20, B=16):
+    """
+        Method to compute the training data and the inverse masking threshold.
+        The STFT analysis is included.
+        Args:
+            current_set      : (int)       An integer denoting the current training set.
+            set_size         : (int)       The amount of files a set has.
+            wsz              : (int)       Window size in samples.
+            N                : (int)       The FFT size.
+            hop              : (int)       Hop size in samples.
+            T                : (int)       Length of the time-sequence.
+            L                : (int)       Number of context frames from the time-sequence.
+            B                : (int)       Batch size.
+
+        Returns:
+            None             : Just saves the masking threshold tensors.
+
+    """
+
+    # Generate full paths for dev and test
+    dev_list = sorted(os.listdir(dataset_path + foldersList[0]))
+    dev_list = [dataset_path + foldersList[0] + '/' + i for i in dev_list]
+
+    # Current lists for training
+    c_train_mlist = dev_list[(current_set - 1) * set_size: current_set * set_size]
+
+    for index in range(len(c_train_mlist)):
+        # Reading
+        print(c_train_mlist[index])
+        vox, _ = Io.wavRead(os.path.join(c_train_mlist[index], keywords[3]), mono=True)
+        mix, _ = Io.wavRead(os.path.join(c_train_mlist[index], keywords[4]), mono=True)
+
+        # STFT Analysing
+        ms_seg, _ = tf.TimeFrequencyDecomposition.STFT(mix, tf.hamming(wsz, True), N, hop)
+        vs_seg, _ = tf.TimeFrequencyDecomposition.STFT(vox, tf.hamming(wsz, True), N, hop)
+
+        # Remove null frames
+        ms_seg = ms_seg[3:-3, :]
+        vs_seg = vs_seg[3:-3, :]
+
+        # Stack some spectrograms and fit
+        if index == 0:
+            ms_train = ms_seg
+            vs_train = vs_seg
+        else:
+            ms_train = np.vstack((ms_train, ms_seg))
+            vs_train = np.vstack((vs_train, vs_seg))
+
+    # Data preprocessing
+    # Freeing up some memory
+    ms_seg = None
+    vs_seg = None
+
+    # Learning the filtering process
+    mask = Fm(ms_train, vs_train, ms_train, [], [], alpha=1., method='IAM')
+    vs_train = mask()
+    # Yet another memory free-up
+    mask = None
+
+    # Acquire Masking Threshold
+    masking_threshold = pm.maskingThreshold(vs_train)
+
+    # Inverse the filter of masking threshold
+    masking_threshold = mm/(masking_threshold + 1e-6)
+
+    # Prepare overlapping sequences
+    _, _, masking_threshold = prepare_overlap_sequences(ms_train,
+                                                        vs_train,
+                                                        masking_threshold,
+                                                        T, L*2, B)
+    # Storing the masking threshold
+    np.save(os.path.join(mt_path, 'masking_threshold_pt_' + str(current_set) + '.npy'))
+
+    return None
 
 # EOF
