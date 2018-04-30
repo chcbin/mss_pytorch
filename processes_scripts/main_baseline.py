@@ -48,24 +48,24 @@ def main(training):
     print('------------   Building model   ------------')
     encoder = s_s_net.BiGRUEncoder(B, T, N, F, L)
     decoder = s_s_net.Decoder(B, T, N, F, L, infr=True)
-    fnn_decoder = s_s_net.FNNDecoder(B, T, N, F, L)
+    sp_decoder = s_s_net.SparseDecoder(B, T, N, F, L)
 
     encoder.train(mode=True)
     decoder.train(mode=True)
-    fnn_decoder.train(mode=True)
+    sp_decoder.train(mode=True)
 
     if torch.has_cudnn:
         print('------------   CUDA Enabled   --------------')
         encoder.cuda()
         decoder.cuda()
-        fnn_decoder.cuda()
+        sp_decoder.cuda()
 
     # Defining objectives
     rec_criterion = loss_functions.mse  # Reconstruction criterion
 
     optimizer = optim.Adam(list(encoder.parameters()) +
                            list(decoder.parameters()) +
-                           list(fnn_decoder.parameters()),
+                           list(sp_decoder.parameters()),
                            lr=init_lr
                            )
 
@@ -93,7 +93,7 @@ def main(training):
                     # Mixture to Singing voice
                     H_enc = encoder.forward(ms[batch * B: (batch + 1) * B, :, :])
                     H_j_dec = decoder.forward(H_enc)
-                    vs_hat_b = fnn_decoder.forward(H_j_dec, ms[batch * B: (batch + 1) * B, :, :])[0]
+                    vs_hat_b = sp_decoder.forward(H_j_dec, ms[batch * B: (batch + 1) * B, :, :])[0]
 
                     # Loss
                     loss = rec_criterion(Variable(
@@ -115,7 +115,7 @@ def main(training):
 
                     torch.nn.utils.clip_grad_norm(list(encoder.parameters()) +
                                                   list(decoder.parameters()) +
-                                                  list(fnn_decoder.parameters()),
+                                                  list(sp_decoder.parameters()),
                                                   max_norm=mnorm, norm_type=2)
                     optimizer.step()
 
