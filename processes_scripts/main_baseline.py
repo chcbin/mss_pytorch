@@ -128,19 +128,19 @@ def main(training):
                 print('------------   Saving model   ------------')
                 torch.save(encoder.state_dict(), 'results/torch_baseline_encoder_mse' + str(epoch + 1) + '.pytorch')
                 torch.save(decoder.state_dict(), 'results/torch_baseline_decoder_mse' + str(epoch + 1) + '.pytorch')
-                torch.save(fnn_decoder.state_dict(), 'results/torch_baseline_fnn_decoder_mse' + str(epoch + 1) + '.pytorch')
+                torch.save(sp_decoder.state_dict(), 'results/torch_baseline_sp_decoder_mse' + str(epoch + 1) + '.pytorch')
                 print('------------       Done       ------------')
     else:
         print('-------  Loading pre-trained model   -------')
         encoder.load_state_dict(
-            torch.load('results/torch_baseline_fnn_decoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
+            torch.load('results/torch_baseline_encoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
         decoder.load_state_dict(
-            torch.load('results/torch_baseline_fnn_decoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
+            torch.load('results/torch_baseline_decoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
         fnn_decoder.load_state_dict(
-            torch.load('results/torch_baseline_fnn_decoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
+            torch.load('results/orch_baseline_sp_decoder_mse50.pytorch', map_location={'cuda:1': 'cuda:0'}))
         print('-------------      Done        -------------')
 
-    return encoder, decoder, fnn_decoder
+    return encoder, decoder, sp_decoder
 
 
 if __name__ == '__main__':
